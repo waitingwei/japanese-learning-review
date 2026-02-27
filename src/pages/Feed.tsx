@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { useStorage } from '../store/StorageContext'
+import { useStorage, useAuthToken } from '../store/StorageContext'
 import {
   parsePaste,
   parseCSV,
@@ -39,6 +39,7 @@ async function extractPDF(buffer: ArrayBuffer): Promise<string> {
 
 export default function Feed() {
   const storage = useStorage()
+  const getToken = useAuthToken()
   const [type, setType] = useState<FeedType>('vocab')
   const [lesson, setLesson] = useState('')
   const [pasteText, setPasteText] = useState('')
@@ -88,12 +89,12 @@ export default function Feed() {
     if (type !== 'vocab' || parsed.length === 0) return
     setLookupLoading(true)
     try {
-      const enriched = await enrichVocabWithJisho(parsed)
+      const enriched = await enrichVocabWithJisho(parsed, getToken ?? undefined)
       setParsed(enriched)
     } finally {
       setLookupLoading(false)
     }
-  }, [type, parsed])
+  }, [type, parsed, getToken])
 
   const handleImport = useCallback(() => {
     const grammarItems = parsed.filter((r) => r.grammar).map((r) => r.grammar!)

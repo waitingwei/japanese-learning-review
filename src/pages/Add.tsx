@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useStorage } from '../store/StorageContext'
+import { useStorage, useAuthToken } from '../store/StorageContext'
 import type { ApiClient } from '../api/client'
 import { lookupJisho, getJapanDictUrl } from '../services/jisho'
 import type { VerbConjugation } from '../types'
@@ -151,6 +151,7 @@ function emptyConjugation(): VerbConjugation {
 }
 
 function AddVocabForm({ storage, onSaved }: { storage: ApiClient; onSaved: () => void }) {
+  const getToken = useAuthToken()
   const [word, setWord] = useState('')
   const [reading, setReading] = useState('')
   const [meaning, setMeaning] = useState('')
@@ -169,7 +170,7 @@ function AddVocabForm({ storage, onSaved }: { storage: ApiClient; onSaved: () =>
     setLoading(true)
     setLookupError(null)
     try {
-      const result = await lookupJisho(word.trim())
+      const result = await lookupJisho(word.trim(), getToken ?? undefined)
       if (!result) {
         setLookupError('Lookup failed. Make sure the dev server is running and try again.')
         return

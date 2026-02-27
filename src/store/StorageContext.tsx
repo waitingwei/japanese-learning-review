@@ -9,6 +9,9 @@ const useApi = (): boolean =>
 
 const StorageContext = createContext<ApiClient | null>(null)
 
+/** Provides getToken for authenticated API calls (e.g. Jisho lookup). Set when VITE_USE_API is used. */
+export const AuthTokenContext = createContext<(() => Promise<string | null>) | null>(null)
+
 export function StorageProvider({ children }: { children: ReactNode }) {
   const useApiFlag = useApi()
   const { getToken } = useAuth()
@@ -29,12 +32,18 @@ export function StorageProvider({ children }: { children: ReactNode }) {
       )
     }
     return (
-      <StorageContext.Provider value={client}>
-        {children}
-      </StorageContext.Provider>
+      <AuthTokenContext.Provider value={getToken}>
+        <StorageContext.Provider value={client}>
+          {children}
+        </StorageContext.Provider>
+      </AuthTokenContext.Provider>
     )
   }
   return <>{children}</>
+}
+
+export function useAuthToken(): (() => Promise<string | null>) | null {
+  return useContext(AuthTokenContext)
 }
 
 export function useStorage(): ApiClient {

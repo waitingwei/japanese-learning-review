@@ -27,9 +27,21 @@ function parseConjugationFromJisho(_first: { japanese?: Array<{ word?: string; r
   return undefined
 }
 
-export async function lookupJisho(keyword: string): Promise<JishoResult | null> {
+/**
+ * @param keyword - Word to look up on Jisho.
+ * @param getToken - When using production API (VITE_USE_API), pass Clerk's getToken so the request is authenticated.
+ */
+export async function lookupJisho(
+  keyword: string,
+  getToken?: () => Promise<string | null>
+): Promise<JishoResult | null> {
   try {
-    const res = await fetch(`${JISHO_API}?keyword=${encodeURIComponent(keyword)}`)
+    const headers: HeadersInit = {}
+    if (getToken) {
+      const token = await getToken()
+      if (token) headers.Authorization = `Bearer ${token}`
+    }
+    const res = await fetch(`${JISHO_API}?keyword=${encodeURIComponent(keyword)}`, { headers })
     if (!res.ok) return null
     const data = await res.json()
     const first = data.data?.[0]

@@ -136,7 +136,10 @@ export function parseJSON(text: string, type: FeedType, lesson: string): ParsedR
   }
 }
 
-export async function enrichVocabWithJisho(rows: ParsedRow[]): Promise<ParsedRow[]> {
+export async function enrichVocabWithJisho(
+  rows: ParsedRow[],
+  getToken?: () => Promise<string | null>
+): Promise<ParsedRow[]> {
   const out: ParsedRow[] = []
   for (const row of rows) {
     if (row.type !== 'vocab' || !row.vocab) {
@@ -145,7 +148,7 @@ export async function enrichVocabWithJisho(rows: ParsedRow[]): Promise<ParsedRow
     }
     const { word, meaning, reading } = row.vocab
     if (word && (!meaning || !reading)) {
-      const res = await lookupJisho(word)
+      const res = await lookupJisho(word, getToken)
       if (res) {
         out.push({
           ...row,

@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+*.local
+
+# Environment (secrets – use .env.example as template)
+.env
+.env.local
+.env.*.local
+
+# Editor / OS
+.DS_Store
+*.log
+.cursor/
+
+# Optional
+*.tsbuildinfo
