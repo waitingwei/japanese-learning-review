@@ -5,7 +5,7 @@ import { createLocalStorageAdapter } from './localStorageAdapter'
 import type { ApiClient } from '../api/client'
 
 const useApi = (): boolean =>
-  import.meta.env.VITE_USE_API === 'true' || import.meta.env.VITE_USE_API === true
+  import.meta.env.VITE_USE_API === 'true'
 
 const StorageContext = createContext<ApiClient | null>(null)
 
