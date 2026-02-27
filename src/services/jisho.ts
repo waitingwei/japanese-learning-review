@@ -1,5 +1,7 @@
-// The Jisho API does not enable CORS. We call it through a same-origin proxy.
+// The Jisho API does not enable CORS. We call it through a same-origin proxy, with CORS-proxy fallback on 525/5xx.
 const JISHO_API = '/api/jisho'
+const JISHO_DIRECT_URL = 'https://jisho.org/api/v1/search/words'
+const CORS_PROXY_PREFIX = 'https://api.allorigins.win/raw?url='
 
 /** Conjugation fields we may parse from API or leave empty for manual entry. */
 export interface JishoConjugation {
@@ -25,6 +27,14 @@ export interface JishoResult {
  */
 function parseConjugationFromJisho(_first: { japanese?: Array<{ word?: string; reading?: string }> }): JishoConjugation | undefined {
   return undefined
+}
+function parseJishoData(data: { data?: Array<unknown> }): JishoResult | null {
+  const first = data.data?.[0] as { japanese?: Array<{ word?: string; reading?: string }>; senses?: Array<{ english_definitions?: string[] }> } | undefined
+  if (!first) return null
+  const reading = first.japanese?.[0]?.reading ?? first.japanese?.[0]?.word ?? ''
+  const meaning = first.senses?.[0]?.english_definitions?.join(', ') ?? ''
+  const conjugation = parseConjugationFromJisho(first)
+  return { reading, meaning, conjugation }
 }
 
 /** Thrown when lookup fails (network, auth, rate limit, timeout). Use message for UI. */
@@ -54,25 +64,42 @@ export async function lookupJisho(
     }
   }
 
-  const doFetch = () => fetch(`${JISHO_API}?keyword=${encodeURIComponent(keyword)}`, { headers })
+  const RETRY_DELAY_MS = 600
+  const doProxyFetch = () => fetch(`${JISHO_API}?keyword=${encodeURIComponent(keyword)}`, { headers })
 
   let res: Response
   try {
-    res = await doFetch()
-    if (!res.ok && (res.status >= 500 || res.status === 525)) {
-      await new Promise((r) => setTimeout(r, 1500))
-      res = await doFetch()
+    res = await doProxyFetch()
+    for (let retry = 0; retry < 2 && !res.ok && (res.status >= 500 || res.status === 525); retry++) {
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
+      res = await doProxyFetch()
     }
   } catch (e) {
     try {
-      await new Promise((r) => setTimeout(r, 600))
-      res = await doFetch()
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
+      res = await doProxyFetch()
     } catch {
       throw new JishoLookupError('Network error. Check your connection and try again.')
     }
   }
 
   if (!res.ok) {
+    const isUnavailable = res.status === 525 || (res.status >= 502 && res.status <= 504)
+    if (isUnavailable) {
+      try {
+        const fallback = await fetch(
+          CORS_PROXY_PREFIX + encodeURIComponent(`${JISHO_DIRECT_URL}?keyword=${encodeURIComponent(keyword)}`)
+        )
+        if (fallback.ok) {
+          const text = await fallback.text()
+          const data = JSON.parse(text) as { data?: Array<unknown> }
+          const result = parseJishoData(data)
+          if (result !== null) return result
+        }
+      } catch {
+        // fallback failed, show message below
+      }
+    }
     let msg: string
     try {
       const body = await res.json().catch(() => ({}))
@@ -82,8 +109,8 @@ export async function lookupJisho(
     }
     if (res.status === 401) msg = 'Please sign in again.'
     if (res.status === 429) msg = 'Too many lookups. Please wait a moment and try again.'
-    if (res.status === 525) msg = 'Lookup service temporarily unavailable (connection error). Please try again in a few minutes.'
-    if (res.status >= 502 && res.status <= 504) msg = 'Lookup service is temporarily unavailable. Please try again in a few minutes.'
+    if (res.status === 525) msg = 'Lookup service temporarily unavailable. Please try again in a moment.'
+    if (res.status >= 502 && res.status <= 504) msg = 'Lookup service is temporarily unavailable. Please try again in a moment.'
     throw new JishoLookupError(msg)
   }
 
@@ -94,18 +121,7 @@ export async function lookupJisho(
     throw new JishoLookupError('Invalid response from lookup service.')
   }
 
-  const first = data.data?.[0] as { japanese?: Array<{ word?: string; reading?: string }>; senses?: Array<{ english_definitions?: string[] }> } | undefined
-  if (!first) return null
-
-  const reading =
-    first.japanese?.[0]?.reading ??
-    first.japanese?.[0]?.word ??
-    ''
-  const meaning =
-    first.senses?.[0]?.english_definitions?.join(', ') ??
-    ''
-  const conjugation = parseConjugationFromJisho(first)
-  return { reading, meaning, conjugation }
+  return parseJishoData(data)
 }
 
 export function getJapanDictUrl(word: string): string {
