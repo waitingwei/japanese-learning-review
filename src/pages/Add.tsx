@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStorage, useAuthToken } from '../store/StorageContext'
 import type { ApiClient } from '../api/client'
-import { lookupJisho, getJapanDictUrl } from '../services/jisho'
+import { lookupJisho, JishoLookupError, getJapanDictUrl } from '../services/jisho'
 import type { VerbConjugation } from '../types'
 
 const CONJUGATION_FIELDS: { key: keyof VerbConjugation; label: string }[] = [
@@ -172,7 +172,7 @@ function AddVocabForm({ storage, onSaved }: { storage: ApiClient; onSaved: () =>
     try {
       const result = await lookupJisho(word.trim(), getToken ?? undefined)
       if (!result) {
-        setLookupError('Lookup failed. Make sure the dev server is running and try again.')
+        setLookupError('Word not found on Jisho. You can still enter reading and meaning manually.')
         return
       }
       if (result.reading) setReading(result.reading)
@@ -184,6 +184,8 @@ function AddVocabForm({ storage, onSaved }: { storage: ApiClient; onSaved: () =>
           ...result.conjugation,
         }))
       }
+    } catch (err) {
+      setLookupError(err instanceof JishoLookupError ? err.message : 'Lookup failed. Try again.')
     } finally {
       setLoading(false)
     }

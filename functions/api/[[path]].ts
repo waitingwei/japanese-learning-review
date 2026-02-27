@@ -118,42 +118,23 @@ async function handleGrammar(
   if ((method === 'PATCH' || method === 'DELETE') && id && !isBulk) {
     if (method === 'PATCH') {
       const body = (await request.json()) as Record<string, unknown>;
-      const parts: string[] = ['UPDATE grammar SET '];
-      const vals: unknown[] = [];
-      if (body.title !== undefined) {
-        parts.push('title = ', ', ');
-        vals.push(body.title);
-      }
-      if (body.explanation !== undefined) {
-        parts.push('explanation = ', ', ');
-        vals.push(body.explanation);
-      }
-      if (body.exampleSentence !== undefined) {
-        parts.push('example_sentence = ', ', ');
-        vals.push(body.exampleSentence);
-      }
-      if (body.exampleTranslation !== undefined) {
-        parts.push('example_translation = ', ', ');
-        vals.push(body.exampleTranslation);
-      }
-      if (body.lesson !== undefined) {
-        parts.push('lesson = ', ', ');
-        vals.push(body.lesson);
-      }
-      if (body.srs !== undefined) {
-        const s = body.srs as { nextReviewAt?: string; interval?: number; easeFactor?: number };
-        parts.push('next_review_at = ', ', interval_days = ', ', ease_factor = ', ', ');
-        vals.push(s.nextReviewAt ?? todayISO(), s.interval ?? 0, s.easeFactor ?? 2.5);
-      }
-      if (vals.length === 0) return jsonResponse({});
-      parts[parts.length - 1] = parts[parts.length - 1].replace(/,\s*$/, '');
-      parts.push(' WHERE id = ', '::uuid AND user_id = ', ' RETURNING *');
-      vals.push(id, userId);
-      const template = Object.assign(parts, { raw: parts }) as TemplateStringsArray;
-      const rows = await (sql as (s: TemplateStringsArray, ...v: unknown[]) => Promise<Record<string, unknown>[]>)(
-        template,
-        ...vals
-      );
+      const title = String(body.title ?? '');
+      const explanation = String(body.explanation ?? '');
+      const exampleSentence = String(body.exampleSentence ?? '');
+      const exampleTranslation = String(body.exampleTranslation ?? '');
+      const lesson = String(body.lesson ?? '');
+      const srs = body.srs as { nextReviewAt?: string; interval?: number; easeFactor?: number } | undefined;
+      const nextReviewAt = srs?.nextReviewAt ?? todayISO();
+      const intervalDays = srs?.interval ?? 0;
+      const easeFactor = srs?.easeFactor ?? 2.5;
+      const rows = await sql`
+        UPDATE grammar
+        SET title = ${title}, explanation = ${explanation}, example_sentence = ${exampleSentence},
+            example_translation = ${exampleTranslation}, lesson = ${lesson},
+            next_review_at = ${nextReviewAt}, interval_days = ${intervalDays}, ease_factor = ${easeFactor}
+        WHERE id = ${id}::uuid AND user_id = ${userId}
+        RETURNING *
+      `;
       const row = Array.isArray(rows) ? rows[0] : (rows as unknown as Record<string, unknown>[])?.[0];
       if (!row) return errorResponse('Not found', 404);
       return jsonResponse(rowToGrammar(row));
@@ -207,40 +188,25 @@ async function handleVocab(
   if ((method === 'PATCH' || method === 'DELETE') && id && !isBulk) {
     if (method === 'PATCH') {
       const body = (await request.json()) as Record<string, unknown>;
-      const parts: string[] = ['UPDATE vocab SET '];
-      const vals: unknown[] = [];
-      const fields: [string, string][] = [
-        ['word', 'word'],
-        ['reading', 'reading'],
-        ['meaning', 'meaning'],
-        ['exampleSentence', 'example_sentence'],
-        ['lesson', 'lesson'],
-        ['conjugationSummary', 'conjugation_summary'],
-      ];
-      for (const [k, col] of fields) {
-        if (body[k] !== undefined) {
-          parts.push(`${col} = `, ', ');
-          vals.push(body[k]);
-        }
-      }
-      if (body.conjugation !== undefined) {
-        parts.push('conjugation = ', '::jsonb, ');
-        vals.push(JSON.stringify(body.conjugation));
-      }
-      if (body.srs !== undefined) {
-        const s = body.srs as { nextReviewAt?: string; interval?: number; easeFactor?: number };
-        parts.push('next_review_at = ', ', interval_days = ', ', ease_factor = ', ', ');
-        vals.push(s.nextReviewAt ?? todayISO(), s.interval ?? 0, s.easeFactor ?? 2.5);
-      }
-      if (vals.length === 0) return jsonResponse({});
-      parts[parts.length - 1] = parts[parts.length - 1].replace(/,\s*$/, '');
-      parts.push(' WHERE id = ', '::uuid AND user_id = ', ' RETURNING *');
-      vals.push(id, userId);
-      const template = Object.assign(parts, { raw: parts }) as TemplateStringsArray;
-      const rows = await (sql as (s: TemplateStringsArray, ...v: unknown[]) => Promise<Record<string, unknown>[]>)(
-        template,
-        ...vals
-      );
+      const word = String(body.word ?? '');
+      const reading = String(body.reading ?? '');
+      const meaning = String(body.meaning ?? '');
+      const exampleSentence = String(body.exampleSentence ?? '');
+      const lesson = String(body.lesson ?? '');
+      const conjugationSummary = body.conjugationSummary != null ? String(body.conjugationSummary) : null;
+      const conjugation = body.conjugation != null ? JSON.stringify(body.conjugation) : null;
+      const srs = body.srs as { nextReviewAt?: string; interval?: number; easeFactor?: number } | undefined;
+      const nextReviewAt = srs?.nextReviewAt ?? todayISO();
+      const intervalDays = srs?.interval ?? 0;
+      const easeFactor = srs?.easeFactor ?? 2.5;
+      const rows = await sql`
+        UPDATE vocab
+        SET word = ${word}, reading = ${reading}, meaning = ${meaning}, example_sentence = ${exampleSentence},
+            lesson = ${lesson}, conjugation_summary = ${conjugationSummary}, conjugation = ${conjugation}::jsonb,
+            next_review_at = ${nextReviewAt}, interval_days = ${intervalDays}, ease_factor = ${easeFactor}
+        WHERE id = ${id}::uuid AND user_id = ${userId}
+        RETURNING *
+      `;
       const row = Array.isArray(rows) ? rows[0] : (rows as unknown as Record<string, unknown>[])?.[0];
       if (!row) return errorResponse('Not found', 404);
       return jsonResponse(rowToVocab(row));
@@ -292,38 +258,21 @@ async function handleSentences(
   if ((method === 'PATCH' || method === 'DELETE') && id && !isBulk) {
     if (method === 'PATCH') {
       const body = (await request.json()) as Record<string, unknown>;
-      const parts: string[] = ['UPDATE sentences SET '];
-      const vals: unknown[] = [];
-      if (body.japaneseText !== undefined) {
-        parts.push('japanese_text = ', ', ');
-        vals.push(body.japaneseText);
-      }
-      if (body.translation !== undefined) {
-        parts.push('translation = ', ', ');
-        vals.push(body.translation);
-      }
-      if (body.linkedGrammar !== undefined) {
-        parts.push('linked_grammar = ', ', ');
-        vals.push(body.linkedGrammar);
-      }
-      if (body.lesson !== undefined) {
-        parts.push('lesson = ', ', ');
-        vals.push(body.lesson);
-      }
-      if (body.srs !== undefined) {
-        const s = body.srs as { nextReviewAt?: string; interval?: number; easeFactor?: number };
-        parts.push('next_review_at = ', ', interval_days = ', ', ease_factor = ', ', ');
-        vals.push(s.nextReviewAt ?? todayISO(), s.interval ?? 0, s.easeFactor ?? 2.5);
-      }
-      if (vals.length === 0) return jsonResponse({});
-      parts[parts.length - 1] = parts[parts.length - 1].replace(/,\s*$/, '');
-      parts.push(' WHERE id = ', '::uuid AND user_id = ', ' RETURNING *');
-      vals.push(id, userId);
-      const template = Object.assign(parts, { raw: parts }) as TemplateStringsArray;
-      const rows = await (sql as (s: TemplateStringsArray, ...v: unknown[]) => Promise<Record<string, unknown>[]>)(
-        template,
-        ...vals
-      );
+      const japaneseText = String(body.japaneseText ?? '');
+      const translation = String(body.translation ?? '');
+      const linkedGrammar = body.linkedGrammar != null ? String(body.linkedGrammar) : null;
+      const lesson = String(body.lesson ?? '');
+      const srs = body.srs as { nextReviewAt?: string; interval?: number; easeFactor?: number } | undefined;
+      const nextReviewAt = srs?.nextReviewAt ?? todayISO();
+      const intervalDays = srs?.interval ?? 0;
+      const easeFactor = srs?.easeFactor ?? 2.5;
+      const rows = await sql`
+        UPDATE sentences
+        SET japanese_text = ${japaneseText}, translation = ${translation}, linked_grammar = ${linkedGrammar},
+            lesson = ${lesson}, next_review_at = ${nextReviewAt}, interval_days = ${intervalDays}, ease_factor = ${easeFactor}
+        WHERE id = ${id}::uuid AND user_id = ${userId}
+        RETURNING *
+      `;
       const row = Array.isArray(rows) ? rows[0] : (rows as unknown as Record<string, unknown>[])?.[0];
       if (!row) return errorResponse('Not found', 404);
       return jsonResponse(rowToSentence(row));
@@ -338,11 +287,33 @@ async function handleJisho(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const keyword = url.searchParams.get('keyword');
   if (!keyword) return errorResponse('Missing keyword', 400);
-  const res = await fetch(
-    `https://jisho.org/api/v1/search/words?keyword=${encodeURIComponent(keyword)}`
-  );
-  const data = await res.json();
-  return jsonResponse(data);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12_000);
+
+  try {
+    const res = await fetch(
+      `https://jisho.org/api/v1/search/words?keyword=${encodeURIComponent(keyword)}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const text = await res.text();
+      if (res.status === 429) return errorResponse('Jisho rate limit. Please try again in a moment.', 429);
+      return errorResponse(text || `Jisho returned ${res.status}`, res.status >= 500 ? 502 : res.status);
+    }
+
+    const data = await res.json();
+    return jsonResponse(data);
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error) {
+      if (err.name === 'AbortError') return errorResponse('Lookup timed out. Try again.', 504);
+      return errorResponse(err.message || 'Lookup failed', 502);
+    }
+    return errorResponse('Lookup failed', 502);
+  }
 }
 
 export async function onRequestGet(context: { request: Request; env: Env; params: { path?: string[] } }) {

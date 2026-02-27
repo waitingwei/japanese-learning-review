@@ -248,17 +248,23 @@ function EditGrammarForm({
   const [exampleSentence, setExampleSentence] = useState(item.exampleSentence)
   const [exampleTranslation, setExampleTranslation] = useState(item.exampleTranslation)
   const [lesson, setLesson] = useState(item.lesson)
+  const [saveError, setSaveError] = useState<string | null>(null)
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault()
+        setSaveError(null)
         storage
           .updateGrammar(item.id, { title, explanation, exampleSentence, exampleTranslation, lesson })
           .then(onDone)
-          .catch((err) => console.error(err))
+          .catch((err) => {
+            console.error(err)
+            setSaveError(err instanceof Error ? err.message : 'Save failed. Try again.')
+          })
       }}
       className="space-y-3"
     >
+      {saveError && <p className="rounded bg-red-50 p-2 text-sm text-red-800">{saveError}</p>}
       <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded border px-2 py-1" placeholder="Title" />
       <textarea value={explanation} onChange={(e) => setExplanation(e.target.value)} className="w-full rounded border px-2 py-1" rows={2} />
       <input value={exampleSentence} onChange={(e) => setExampleSentence(e.target.value)} className="w-full rounded border px-2 py-1" placeholder="Example sentence" />
@@ -299,10 +305,12 @@ function EditVocabForm({
   const setConjugationField = (key: keyof VerbConjugation, value: string) => {
     setConjugation((prev) => ({ ...prev, [key]: value }))
   }
+  const [saveError, setSaveError] = useState<string | null>(null)
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault()
+        setSaveError(null)
         const conj: VerbConjugation = {}
         CONJUGATION_FIELDS.forEach(({ key }) => {
           const v = conjugation[key]?.trim()
@@ -318,10 +326,14 @@ function EditVocabForm({
             conjugation: Object.keys(conj).length ? conj : undefined,
           })
           .then(onDone)
-          .catch((err) => console.error(err))
+          .catch((err) => {
+            console.error(err)
+            setSaveError(err instanceof Error ? err.message : 'Save failed. Try again.')
+          })
       }}
       className="space-y-3"
     >
+      {saveError && <p className="rounded bg-red-50 p-2 text-sm text-red-800">{saveError}</p>}
       <input value={word} onChange={(e) => setWord(e.target.value)} className="w-full rounded border px-2 py-1" placeholder="Word" />
       <input value={reading} onChange={(e) => setReading(e.target.value)} className="w-full rounded border px-2 py-1" placeholder="Reading" />
       <input value={meaning} onChange={(e) => setMeaning(e.target.value)} className="w-full rounded border px-2 py-1" placeholder="Meaning" />
@@ -367,17 +379,23 @@ function EditSentenceForm({
   const [translation, setTranslation] = useState(item.translation)
   const [linkedGrammar, setLinkedGrammar] = useState(item.linkedGrammar ?? '')
   const [lesson, setLesson] = useState(item.lesson)
+  const [saveError, setSaveError] = useState<string | null>(null)
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault()
+        setSaveError(null)
         storage
           .updateSentence(item.id, { japaneseText, translation, linkedGrammar: linkedGrammar || undefined, lesson })
           .then(onDone)
-          .catch((err) => console.error(err))
+          .catch((err) => {
+            console.error(err)
+            setSaveError(err instanceof Error ? err.message : 'Save failed. Try again.')
+          })
       }}
       className="space-y-3"
     >
+      {saveError && <p className="rounded bg-red-50 p-2 text-sm text-red-800">{saveError}</p>}
       <input value={japaneseText} onChange={(e) => setJapaneseText(e.target.value)} className="w-full rounded border px-2 py-1" placeholder="Japanese" />
       <input value={translation} onChange={(e) => setTranslation(e.target.value)} className="w-full rounded border px-2 py-1" placeholder="Translation" />
       <input value={linkedGrammar} onChange={(e) => setLinkedGrammar(e.target.value)} className="w-full rounded border px-2 py-1" placeholder="Linked grammar" />

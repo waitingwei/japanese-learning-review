@@ -1,6 +1,11 @@
 import type { Grammar, Vocabulary, Sentence } from '../types'
 import { lookupJisho } from '../services/jisho'
 
+const JISHO_BULK_DELAY_MS = 450
+function delay(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms))
+}
+
 type FeedType = 'grammar' | 'vocab' | 'sentence'
 
 export interface ParsedRow {
@@ -141,24 +146,30 @@ export async function enrichVocabWithJisho(
   getToken?: () => Promise<string | null>
 ): Promise<ParsedRow[]> {
   const out: ParsedRow[] = []
-  for (const row of rows) {
+  for (let i = 0; i < rows.length; i++) {
+    if (i > 0) await delay(JISHO_BULK_DELAY_MS)
+    const row = rows[i]
     if (row.type !== 'vocab' || !row.vocab) {
       out.push(row)
       continue
     }
     const { word, meaning, reading } = row.vocab
     if (word && (!meaning || !reading)) {
-      const res = await lookupJisho(word, getToken)
-      if (res) {
-        out.push({
-          ...row,
-          vocab: {
-            ...row.vocab,
-            reading: reading || res.reading,
-            meaning: meaning || res.meaning,
-          },
-        })
-        continue
+      try {
+        const res = await lookupJisho(word, getToken)
+        if (res) {
+          out.push({
+            ...row,
+            vocab: {
+              ...row.vocab,
+              reading: reading || res.reading,
+              meaning: meaning || res.meaning,
+            },
+          })
+          continue
+        }
+      } catch {
+        // Skip this word on error (rate limit, network, etc.); keep row unchanged
       }
     }
     out.push(row)
