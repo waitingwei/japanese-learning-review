@@ -59,8 +59,8 @@ export async function lookupJisho(
   let res: Response
   try {
     res = await doFetch()
-    if (!res.ok && res.status >= 500) {
-      await new Promise((r) => setTimeout(r, 800))
+    if (!res.ok && (res.status >= 500 || res.status === 525)) {
+      await new Promise((r) => setTimeout(r, 1500))
       res = await doFetch()
     }
   } catch (e) {
@@ -82,6 +82,8 @@ export async function lookupJisho(
     }
     if (res.status === 401) msg = 'Please sign in again.'
     if (res.status === 429) msg = 'Too many lookups. Please wait a moment and try again.'
+    if (res.status === 525) msg = 'Lookup service temporarily unavailable (connection error). Please try again in a few minutes.'
+    if (res.status >= 502 && res.status <= 504) msg = 'Lookup service is temporarily unavailable. Please try again in a few minutes.'
     throw new JishoLookupError(msg)
   }
 
