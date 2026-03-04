@@ -38,7 +38,6 @@ If the page is blank or "nothing happens", check:
 - **Browse all**: List view with filters by type (Grammar / Vocab / Sentences) and Lesson
 - **Flashcards**: Spaced repetition (Again / Good / Easy), deck by “Due today” or “All”
 - **Add**: Single grammar, vocab, or sentence; for vocab: “Look up” (Jisho) and “Open in JapanDict”
-- **Feed / Import**: Paste or upload CSV, JSON, .txt, or PDF; choose type and lesson; optional “Look up all” for vocab; preview and import
 
 ## Notes on “Look up”
 

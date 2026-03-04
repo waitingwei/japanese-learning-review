@@ -1,9 +1,11 @@
 import type { SRSFields } from '../types';
 
-// Simple SM-2-like step: Again -> 0d, Good -> +1 interval, Easy -> +2
-const MIN_INTERVAL = 0;
-const GOOD_BONUS = 1;
-const EASY_BONUS = 2;
+/**
+ * Ebbinghaus-style forgetting curve: interval steps (index -> days until next review).
+ * Again = step 0 (today). Good = +1 step. Easy = +2 steps.
+ */
+const INTERVAL_DAYS = [0, 1, 2, 4, 7, 14, 30] as const;
+const MAX_STEP = INTERVAL_DAYS.length - 1;
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -15,6 +17,11 @@ function addDays(iso: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Treat stored interval as step index; legacy data may have stored days, so clamp to max step. */
+function stepFromPrev(prev: SRSFields): number {
+  return Math.min(Math.max(0, prev.interval), MAX_STEP);
+}
+
 export type Rating = 'again' | 'good' | 'easy';
 
 export function nextSRS(current: SRSFields | undefined, rating: Rating): SRSFields {
@@ -24,21 +31,20 @@ export function nextSRS(current: SRSFields | undefined, rating: Rating): SRSFiel
     easeFactor: 2.5,
   };
   const today = todayISO();
-  let nextInterval: number;
-  let nextDate: string;
+  const currentStep = stepFromPrev(prev);
+  let nextStep: number;
   if (rating === 'again') {
-    nextInterval = MIN_INTERVAL;
-    nextDate = today;
+    nextStep = 0;
   } else if (rating === 'good') {
-    nextInterval = Math.max(1, prev.interval + GOOD_BONUS);
-    nextDate = addDays(today, nextInterval);
+    nextStep = Math.min(currentStep + 1, MAX_STEP);
   } else {
-    nextInterval = Math.max(1, prev.interval + EASY_BONUS);
-    nextDate = addDays(today, nextInterval);
+    nextStep = Math.min(currentStep + 2, MAX_STEP);
   }
+  const days = INTERVAL_DAYS[nextStep];
+  const nextDate = days === 0 ? today : addDays(today, days);
   return {
     nextReviewAt: nextDate,
-    interval: nextInterval,
+    interval: nextStep,
     easeFactor: prev.easeFactor,
   };
 }

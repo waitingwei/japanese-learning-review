@@ -25,6 +25,8 @@ export default function Flashcards() {
   const [started, setStarted] = useState(false)
   const [index, setIndex] = useState(0)
   const [showBack, setShowBack] = useState(false)
+  /** Session deck: fixed when we start so "Again" can re-queue the card to the end. */
+  const [sessionCards, setSessionCards] = useState<Item[]>([])
 
   const lessons = useMemo(() => {
     const set = new Set<string>()
@@ -47,29 +49,50 @@ export default function Flashcards() {
     }
     if (lessonFilter) list = list.filter((i) => i.lesson === lessonFilter)
     return list
-  }, [grammar, vocab, sentences, deck, lessonFilter, started, index])
+  }, [grammar, vocab, sentences, deck, lessonFilter])
 
-  const current = cards[index]
-  const total = cards.length
+  const current = started ? sessionCards[index] : null
+  const total = started ? sessionCards.length : cards.length
+
+  const startSession = () => {
+    setSessionCards(cards)
+    setStarted(true)
+    setIndex(0)
+  }
 
   useEffect(() => {
     setShowBack(false)
   }, [index])
 
   const rate = (rating: Rating) => {
-    if (!current?.srs) return
-    const next = nextSRS(current.srs, rating)
-    const p = isGrammar(current)
-      ? storage.updateGrammar(current.id, { srs: next })
-      : isVocabulary(current)
-        ? storage.updateVocab(current.id, { srs: next })
-        : storage.updateSentence(current.id, { srs: next })
+    const cur = started ? sessionCards[index] : null
+    if (!cur?.srs) return
+    const next = nextSRS(cur.srs, rating)
+    const p = isGrammar(cur)
+      ? storage.updateGrammar(cur.id, { srs: next })
+      : isVocabulary(cur)
+        ? storage.updateVocab(cur.id, { srs: next })
+        : storage.updateSentence(cur.id, { srs: next })
     p.catch((err) => console.error(err))
     setShowBack(false)
-    if (index + 1 >= total) {
-      setStarted(false)
-      setIndex(0)
-    } else setIndex(index + 1)
+
+    if (rating === 'again') {
+      const updated = { ...cur, srs: next } as Item
+      setSessionCards((prev) => [
+        ...prev.slice(0, index),
+        ...prev.slice(index + 1),
+        updated,
+      ])
+      // Next card is now at index; don't change index or end session.
+    } else {
+      if (index + 1 >= sessionCards.length) {
+        setStarted(false)
+        setIndex(0)
+        setSessionCards([])
+      } else {
+        setIndex(index + 1)
+      }
+    }
   }
 
   if (!started) {
@@ -119,7 +142,7 @@ export default function Flashcards() {
           ) : (
             <button
               type="button"
-              onClick={() => setStarted(true)}
+              onClick={startSession}
               className="rounded-md bg-rose-600 px-4 py-2 text-white hover:bg-rose-700"
             >
               Start session

@@ -45,6 +45,9 @@ export class JishoLookupError extends Error {
   }
 }
 
+/** In-memory cache: same keyword in same session does not hit the API again. */
+const jishoCache = new Map<string, JishoResult | null>()
+
 /**
  * @param keyword - Word to look up on Jisho.
  * @param getToken - When using production API (VITE_USE_API), pass Clerk's getToken so the request is authenticated.
@@ -54,6 +57,11 @@ export async function lookupJisho(
   keyword: string,
   getToken?: () => Promise<string | null>
 ): Promise<JishoResult | null> {
+  const key = keyword.trim()
+  if (!key) return null
+  const cached = jishoCache.get(key)
+  if (cached !== undefined) return cached
+
   const headers: HeadersInit = {}
   if (getToken) {
     try {
@@ -94,7 +102,8 @@ export async function lookupJisho(
           const text = await fallback.text()
           const data = JSON.parse(text) as { data?: Array<unknown> }
           const result = parseJishoData(data)
-          if (result !== null) return result
+          jishoCache.set(key, result)
+          return result
         }
       } catch {
         // fallback failed, show message below
@@ -121,7 +130,9 @@ export async function lookupJisho(
     throw new JishoLookupError('Invalid response from lookup service.')
   }
 
-  return parseJishoData(data)
+  const result = parseJishoData(data)
+  jishoCache.set(key, result)
+  return result
 }
 
 export function getJapanDictUrl(word: string): string {

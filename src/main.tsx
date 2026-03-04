@@ -6,7 +6,10 @@ import App from './App'
 import { ErrorBoundary } from './ErrorBoundary'
 import './index.css'
 
-const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined
+// Only enable Clerk when we have a non-empty key (avoid crash on invalid/truncated key)
+const rawKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined
+const publishableKey =
+  rawKey && rawKey.trim().length > 20 && /^pk_(test|live)_/.test(rawKey.trim()) ? rawKey.trim() : undefined
 
 const rootEl = document.getElementById('root')
 if (!rootEl) {

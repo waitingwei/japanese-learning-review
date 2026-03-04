@@ -152,9 +152,9 @@ export default function List() {
                     >
                       Edit
                     </button>
-                    {isVocabulary(item) && (
+                    {(item.type === 'vocab' || isVocabulary(item)) && 'word' in item && (
                       <a
-                        href={getJapanDictUrl(item.word)}
+                        href={getJapanDictUrl(String(item.word))}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm text-rose-600 hover:underline"
@@ -166,9 +166,9 @@ export default function List() {
                       type="button"
                       onClick={() => {
                         if (confirm('Delete this item?')) {
-                          const p = isGrammar(item)
+                          const p = item.type === 'grammar'
                             ? storage.deleteGrammar(item.id)
-                            : isVocabulary(item)
+                            : item.type === 'vocab'
                               ? storage.deleteVocab(item.id)
                               : storage.deleteSentence(item.id)
                           p.then(handleRefresh).catch((err) => console.error(err))
@@ -180,26 +180,31 @@ export default function List() {
                     </button>
                   </div>
                 </div>
-                {isGrammar(item) && (
+                {(item.type === 'grammar' || isGrammar(item)) && (
                   <div className="mt-2">
-                    <p className="font-medium text-stone-800">{item.title}</p>
-                    <p className="text-sm text-stone-600">{item.explanation}</p>
-                    {item.exampleSentence && (
-                      <p className="mt-1 text-sm italic text-stone-500">{item.exampleSentence} — {item.exampleTranslation}</p>
-                    )}
+                    <p className="font-medium text-stone-800">
+                      {(item as Grammar).title?.trim() || <span className="italic text-amber-700">(No title — tap Edit to add)</span>}
+                    </p>
+                    <p className="text-sm text-stone-600">{(item as Grammar).explanation?.trim() || <span className="italic text-stone-400">(No explanation)</span>}</p>
+                    {((item as Grammar).exampleSentence?.trim()) ? (
+                      <p className="mt-1 text-sm italic text-stone-500">{(item as Grammar).exampleSentence} — {(item as Grammar).exampleTranslation ?? ''}</p>
+                    ) : null}
                   </div>
                 )}
-                {isVocabulary(item) && (
+                {(item.type === 'vocab' || isVocabulary(item)) && (
                   <div className="mt-2">
-                    <p className="font-medium text-stone-800">{item.word} {item.reading && `（${item.reading}）`}</p>
-                    <p className="text-sm text-stone-600">{item.meaning || '—'}</p>
-                    {item.exampleSentence && <p className="mt-1 text-sm text-stone-500">{item.exampleSentence}</p>}
-                    {item.conjugation && Object.keys(item.conjugation).some((k) => item.conjugation?.[k as keyof VerbConjugation]?.trim()) && (
+                    <p className="font-medium text-stone-800">
+                      {(item as Vocabulary).word?.trim() || <span className="italic text-amber-700">(No word — tap Edit to add)</span>}
+                      {(item as Vocabulary).reading?.trim() && ` （${(item as Vocabulary).reading}）`}
+                    </p>
+                    <p className="text-sm text-stone-600">{(item as Vocabulary).meaning?.trim() || <span className="italic text-stone-400">(No meaning)</span>}</p>
+                    {(item as Vocabulary).exampleSentence?.trim() && <p className="mt-1 text-sm text-stone-500">{(item as Vocabulary).exampleSentence}</p>}
+                    {(item as Vocabulary).conjugation && Object.keys((item as Vocabulary).conjugation!).some((k) => (item as Vocabulary).conjugation?.[k as keyof VerbConjugation]?.trim()) && (
                       <div className="mt-2 rounded border border-stone-100 bg-stone-50/50 p-2">
                         <span className="text-xs font-medium text-stone-500">Verb conjugation:</span>
                         <ul className="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-stone-600 sm:grid-cols-3">
                           {CONJUGATION_FIELDS.map(({ key, label }) => {
-                            const v = item.conjugation?.[key]?.trim()
+                            const v = (item as Vocabulary).conjugation?.[key]?.trim()
                             if (!v) return null
                             return (
                               <li key={key}>
@@ -212,12 +217,26 @@ export default function List() {
                     )}
                   </div>
                 )}
-                {isSentence(item) && (
+                {(item.type === 'sentence' || isSentence(item)) && (
                   <div className="mt-2">
-                    <p className="text-stone-800">{item.japaneseText}</p>
-                    <p className="text-sm text-stone-600">{item.translation}</p>
+                    <p className="text-stone-800">
+                      {(item as Sentence).japaneseText?.trim() || <span className="italic text-amber-700">(No Japanese text — tap Edit to add)</span>}
+                    </p>
+                    <p className="text-sm text-stone-600">{(item as Sentence).translation?.trim() || <span className="italic text-stone-400">(No translation)</span>}</p>
                   </div>
                 )}
+                {item.type !== 'grammar' && item.type !== 'vocab' && item.type !== 'sentence' && (() => {
+                  const r = item as Record<string, unknown>
+                  const main = [r.title, r.word, r.japaneseText].find((v) => v != null && String(v).trim())
+                  const sub = [r.explanation, r.meaning, r.translation].find((v) => v != null && String(v).trim())
+                  if (!main && !sub) return null
+                  return (
+                    <div className="mt-2">
+                      {main && <p className="font-medium text-stone-800">{String(main)}</p>}
+                      {sub && <p className="text-sm text-stone-600">{String(sub)}</p>}
+                    </div>
+                  )
+                })()}
               </>
             )}
           </li>
