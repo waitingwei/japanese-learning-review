@@ -32,7 +32,7 @@ export function createApiClient(getToken: () => Promise<string | null>) {
     });
   }
 
-  async function checkRes(res: Response, path?: string): Promise<void> {
+  async function checkRes(res: Response): Promise<void> {
     if (!res.ok) {
       const text = await res.text();
       let msg: string;
@@ -49,17 +49,17 @@ export function createApiClient(getToken: () => Promise<string | null>) {
   return {
     async getGrammar(): Promise<Grammar[]> {
       const res = await authFetch('/api/grammar');
-      await checkRes(res, '/api/grammar');
+      await checkRes(res);
       return res.json();
     },
     async getVocab(): Promise<Vocabulary[]> {
       const res = await authFetch('/api/vocab');
-      await checkRes(res, '/api/vocab');
+      await checkRes(res);
       return res.json();
     },
     async getSentences(): Promise<Sentence[]> {
       const res = await authFetch('/api/sentences');
-      await checkRes(res, '/api/sentences');
+      await checkRes(res);
       return res.json();
     },
 

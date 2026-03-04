@@ -18,7 +18,7 @@ const RECOVERED_IDS = PREFIX + 'recovered_ids';
 function useRecovery(): boolean {
   if (typeof window === 'undefined') return false;
   const v = import.meta.env.VITE_USE_API;
-  return v === 'true' || v === true;
+  return String(v) === 'true';
 }
 
 function getRecoveredSet(): Set<string> {
@@ -257,7 +257,7 @@ export function findRecoverable(
     if (recovered.has('grammar_' + normId(item.id))) continue
     if (!isEmpty(item)) continue
     const backup = getBackupItem('grammar', item.id) as Grammar | null
-    let payload: Record<string, unknown> | null = backup ? toUpdatePayload('grammar', backup) : null
+    let payload: Record<string, unknown> | null = backup ? toUpdatePayload('grammar', backup as unknown as Record<string, unknown>) : null
     if (!payload) payload = getLastSentUpdate('grammar', item.id)
     if (payload && (payload.title || payload.explanation)) {
       out.push({ type: 'grammar', id: item.id, updates: payload })
@@ -291,7 +291,7 @@ export function findRecoverable(
     if (recovered.has('vocab_' + normId(item.id))) continue
     if (!isEmpty(item)) continue
     const backup = getBackupItem('vocab', item.id) as Vocabulary | null
-    let payload: Record<string, unknown> | null = backup ? toUpdatePayload('vocab', backup) : null
+    let payload: Record<string, unknown> | null = backup ? toUpdatePayload('vocab', backup as unknown as Record<string, unknown>) : null
     if (!payload) payload = getLastSentUpdate('vocab', item.id)
     if (payload && (payload.word || payload.meaning)) {
       out.push({ type: 'vocab', id: item.id, updates: payload })
@@ -325,7 +325,7 @@ export function findRecoverable(
     if (recovered.has('sentence_' + normId(item.id))) continue
     if (!isEmpty(item)) continue
     const backup = getBackupItem('sentence', item.id) as Sentence | null
-    let payload: Record<string, unknown> | null = backup ? toUpdatePayload('sentence', backup) : null
+    let payload: Record<string, unknown> | null = backup ? toUpdatePayload('sentence', backup as unknown as Record<string, unknown>) : null
     if (!payload) payload = getLastSentUpdate('sentence', item.id)
     if (payload && (payload.japaneseText || payload.translation)) {
       out.push({ type: 'sentence', id: item.id, updates: payload })

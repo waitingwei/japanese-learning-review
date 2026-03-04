@@ -227,13 +227,13 @@ export default function List() {
                 )}
                 {item.type !== 'grammar' && item.type !== 'vocab' && item.type !== 'sentence' && (() => {
                   const r = item as Record<string, unknown>
-                  const main = [r.title, r.word, r.japaneseText].find((v) => v != null && String(v).trim())
-                  const sub = [r.explanation, r.meaning, r.translation].find((v) => v != null && String(v).trim())
+                  const main = [r.title, r.word, r.japaneseText].find((v) => v != null && String(v).trim()) as string | undefined
+                  const sub = [r.explanation, r.meaning, r.translation].find((v) => v != null && String(v).trim()) as string | undefined
                   if (!main && !sub) return null
                   return (
                     <div className="mt-2">
-                      {main && <p className="font-medium text-stone-800">{String(main)}</p>}
-                      {sub && <p className="text-sm text-stone-600">{String(sub)}</p>}
+                      {main != null && main !== '' && <p className="font-medium text-stone-800">{main}</p>}
+                      {sub != null && sub !== '' && <p className="text-sm text-stone-600">{sub}</p>}
                     </div>
                   )
                 })()}
